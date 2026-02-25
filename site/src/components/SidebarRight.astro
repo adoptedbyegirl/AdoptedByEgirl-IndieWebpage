@@ -29,45 +29,79 @@ import flags from "../assets/flags.png";
         <div id="np-artist" class="mono" style="opacity:.8;">offline</div>
       </div>
     </div>
+    
   </div>
-</div>
-
-<script is:inline>
-  const API = "https://nowplaying-worker.AdoptedByEgirl.workers.dev/now"; // <-- change
+    <div class="statusbox">
+    <div class="statusrow">
+      <span class="led on" id="status-led" aria-hidden="true"></span>
+      <span><strong>Status:</strong><span id="status-text">Online</span></span>
+    </div>
+  </div>
+  <script is:inline>
+  const API = "https://nowplaying-worker.adoptedbyegirl.workers.dev/now"; // your worker
 
   const title = document.getElementById("np-title");
   const artist = document.getElementById("np-artist");
   const art = document.getElementById("np-art");
 
+  const statusText = document.getElementById("status-text"); // add these ids in your markup
+  const statusLed = document.getElementById("status-led");
+
+  const OFFLINE_AFTER_MS = 2 * 60 * 1000; // 2 minutes (tune this)
+
+  function setOffline() {
+    if (statusText) statusText.textContent = "Offline";
+    if (statusLed) statusLed.classList.remove("on");
+    title.textContent = "—";
+    artist.textContent = "offline";
+    art.removeAttribute("src");
+  }
+
+  function setOnline() {
+    if (statusText) statusText.textContent = "Online";
+    if (statusLed) statusLed.classList.add("on");
+  }
+
   async function tick() {
     try {
       const res = await fetch(API, { cache: "no-store" });
+
       if (res.status === 204) {
-        title.textContent = "—";
-        artist.textContent = "offline";
-        art.removeAttribute("src");
+        setOffline();
         return;
       }
+
       const data = await res.json();
+
+      // Staleness check
+      const updatedAt = data.updatedAt ? Date.parse(data.updatedAt) : 0;
+      const age = Date.now() - updatedAt;
+      if (!updatedAt || age > OFFLINE_AFTER_MS) {
+        setOffline();
+        return;
+      }
+
+      // Optional: treat paused as offline
+      // trackState: 1 = playing, 2 = paused (YTMD) ([your payload)
+      // If you want paused to be offline, uncomment:
+      if (data.trackState !== 1) { setOffline(); return; }
+
+      setOnline();
       title.textContent = data.title || "—";
-      artist.textContent = data.artist || (data.trackState === 1 ? "playing" : "paused");
+      artist.textContent = data.artist || "";
       if (data.thumbnail) art.src = data.thumbnail;
     } catch {
-      title.textContent = "—";
-      artist.textContent = "offline";
-      art.removeAttribute("src");
+      setOffline();
     }
   }
 
   tick();
   setInterval(tick, 15000);
-</script> 
-  <div class="statusbox">
-    <div class="statusrow">
-      <span class="led on" aria-hidden="true"></span>
-      <span><strong>Status:</strong> Online</span>
-    </div>
-  </div>
+</script>
+</div>
+
+
+
 
   <div class="stampgrid" aria-label="stamps">
     {stamps.map((s) => (
