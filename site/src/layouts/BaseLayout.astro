@@ -1,0 +1,90 @@
+---
+import "../styles/global.css";
+import SidebarLeft from "../components/SidebarLeft.astro";
+import SidebarRight from "../components/SidebarRight.astro";
+
+const {
+  title = "AdoptedByEgirl",
+  description = "personal site • webcore • indie",
+} = Astro.props;
+
+const hasRight = Astro.slots.has("right");
+const hasLeft = Astro.slots.has("left");
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} ✦ {description}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <!-- IndieWeb-ish -->
+    <link rel="me" href="https://github.com/AdoptedByEgirl" />
+  </head>
+
+  <body>
+    <div class="bg-tiles" aria-hidden="true"></div>
+    <div class="bg-stars" aria-hidden="true"></div>
+
+    <div class="frame-wrap">
+      <header class="top frame">
+        <div class="top-inner">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true">✶</span>
+            <div class="brand-text">
+              <div class="brand-title">AdoptedByEgirl</div>
+              <div class="brand-sub">purple-coded</div>
+            </div>
+          </div>
+
+          <div class="top-badges">
+            <span class="pill">static</span>
+            <span class="pill">no trackers</span>
+            <span class="pill">cloudflare pages</span>
+          </div>
+        </div>
+
+        <div class="ticker" aria-label="site ticker">
+          <div class="ticker-track">
+            <span>WELCOME TO MY CORNER ✦</span>
+            <span>LINKS / MUSIC / SHOWS ✦</span>
+            <span>STATUS: ONLINE ✦</span>
+            <span>MADE WITH LOVE & PURPLE ✦</span>
+            <span>WELCOME TO MY CORNER ✦</span>
+            <span>LINKS / MUSIC / SHOWS ✦</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="grid">
+        <aside class="left frame">
+          {hasLeft ? <slot name="left" /> : <SidebarLeft />}
+        </aside>
+
+        <main class="main frame" id="content">
+          <div class="page-head">
+            <h1 class="page-title">{title}</h1>
+            <p class="page-desc">{description}</p>
+          </div>
+
+          <div class="modules">
+            <slot />
+          </div>
+
+          <footer class="footer">
+            <span>© 2026 AdoptedByEgirl</span>
+            <span class="sep">•</span>
+            <a href="https://indieweb.org/" target="_blank" rel="noreferrer">indieweb</a>
+          </footer>
+        </main>
+
+        <aside class="right frame">
+          {hasRight ? <slot name="right" /> : <SidebarRight />}
+        </aside>
+      </div>
+    </div>
+  </body>
+</html>

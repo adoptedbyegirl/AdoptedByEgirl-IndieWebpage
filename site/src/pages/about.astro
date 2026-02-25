@@ -1,0 +1,78 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const interests = [
+  { label: "Homelab", tags: ["proxmox", "lxc", "self-hosted", "backup-obsessed"] },
+  { label: "Tinkering", tags: ["esp32", "arduino", "ir-control", "home-assistant"] },
+  { label: "Cars", tags: ["renault-scenic-2", "retrofit", "wiring", "qol-mods"] },
+  { label: "Music", tags: ["playlists", "shows", "finding-new-stuff"] },
+];
+
+const carThings = [
+  "Radio/display setup ideas (clean install > messy cables).",
+  "Power/ACC wiring rabbit holes (trying to do it properly).",
+  "Little quality-of-life upgrades instead of “look at me” mods.",
+];
+
+const siteNotes = [
+  "This isn’t a portfolio. It’s a personal site.",
+  "I’ll write short stuff. Lists. Notes. Projects that don’t belong on LinkedIn.",
+  "If you’re here from somewhere else: hi. If you’re a bot: please enjoy the void.",
+];
+---
+
+<BaseLayout title="About" description="who I am • what I like • why this site exists">
+  <section class="module">
+    <div class="module-head">Me, quickly</div>
+    <div class="module-body">
+      <p>
+        I’m AdoptedByEgirl. I like building and fixing things.
+        Usually that means computers, small electronics, or a car that’s old enough to have personality.
+      </p>
+      <p>
+        I’m into the “small web” idea: pages that are owned by people, not platforms.
+        So this is mine. Simple. Editable. Mine.
+      </p>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-head">Interests</div>
+    <div class="module-body">
+      <ul style="margin:0; padding-left: 18px;">
+        {interests.map((x) => (
+          <li style="margin: 10px 0;">
+            <strong>{x.label}</strong>
+            <div style="margin-top: 6px; display:flex; gap: 6px; flex-wrap:wrap;">
+              {x.tags.map((t) => <span class="pill">{t}</span>)}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-head">Car stuff</div>
+    <div class="module-body">
+      <p>
+        I tinker with a Renault Scenic 2 (2006). It’s not “cool”, but it’s mine, and it can be made better.
+      </p>
+      <ul>
+        {carThings.map((t) => <li>{t}</li>)}
+      </ul>
+      <p class="mono" style="opacity:.75;">
+        vibe: clean installs, safe wiring, no sketchy shortcuts.
+      </p>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-head">Why this site</div>
+    <div class="module-body">
+      <ul>
+        {siteNotes.map((t) => <li>{t}</li>)}
+      </ul>
+    </div>
+  </section>
+</BaseLayout>

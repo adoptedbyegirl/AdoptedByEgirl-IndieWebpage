@@ -1,0 +1,105 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const updates = [
+  { date: "2026-02-25", text: "New layout + the tiny nano player is alive." },
+  { date: "2026-02-22", text: "Music / Shows pages exist. I will actually fill them. Probably." },
+  { date: "2026-02-20", text: "Astro + Cloudflare Pages set up. Static web supremacy." },
+];
+
+const tinkering = [
+  {
+    title: "Homelab bits",
+    desc: "Proxmox, LXC containers, services that should not break at 2AM.",
+    tags: ["proxmox", "lxc", "self-hosted"],
+  },
+  {
+    title: "ESP32 / Arduino nonsense",
+    desc: "IR control, sensor ideas, routing stuff into Home Assistant because why not.",
+    tags: ["esp32", "arduino", "home-assistant"],
+  },
+  {
+    title: "Car projects",
+    desc: "Mostly quality-of-life: radio/display setup, wiring ideas, making old things feel nicer.",
+    tags: ["renault-scenic-2", "wiring", "mods"],
+  },
+  {
+    title: "Music & shows",
+    desc: "A page for what I’m listening to and what I’d actually go see live.",
+    tags: ["music", "shows", "lists"],
+  },
+];
+
+const quickLinks = [
+  { href: "/about", label: "About" },
+  { href: "/music", label: "Music" },
+];
+---
+
+<BaseLayout title="Home" description="small web • purple-ish • no feed • just pages">
+  <section class="module h-card">
+    <div class="module-head">Hi</div>
+    <div class="module-body">
+      <p class="p-note">
+        I’m <strong class="p-name">AdoptedByEgirl</strong>.
+        This is my little corner of the internet.
+      </p>
+      <p>
+        No algorithm. No “content strategy”. Just stuff I like: tinkering, cars, music, and building things that do what I want.
+      </p>
+
+      <p style="margin-top:10px;">
+        {quickLinks.map((l, i) => (
+          <>
+            <a class="u-url" href={l.href}>{l.label}</a>
+            {i < quickLinks.length - 1 ? <span class="sep"> • </span> : null}
+          </>
+        ))}
+      </p>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-head">What I’m messing with</div>
+    <div class="module-body">
+      <ul style="margin:0; padding-left: 18px;">
+        {tinkering.map((p) => (
+          <li style="margin: 10px 0;">
+            <div><strong>{p.title}</strong></div>
+            <div style="opacity:.85; margin-top: 2px;">{p.desc}</div>
+            <div style="margin-top: 6px; display:flex; gap: 6px; flex-wrap:wrap;">
+              {p.tags.map((t) => <span class="pill">{t}</span>)}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-head">Site log</div>
+    <div class="module-body">
+      <ul style="margin:0; padding-left: 18px;">
+        {updates.map((u) => (
+          <li style="margin: 6px 0;">
+            <span class="mono">{u.date}</span> — {u.text}
+          </li>
+        ))}
+      </ul>
+      <p class="mono" style="opacity:.75; margin-top: 10px;">
+        this site is always “in progress” and that’s the point.
+      </p>
+    </div>
+  </section>
+
+  <section class="module">
+    <div class="module-head">Rules of this place</div>
+    <div class="module-body">
+      <ul>
+        <li>fast pages, minimal JS</li>
+        <li>no trackers</li>
+        <li>if it’s weird but useful, it stays</li>
+      </ul>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,59 @@
+
+---
+const stamps = [
+  "webcore",
+  "made-by-hand",
+  "purple-inside",
+  "no-ai-feed",
+  "my-site-my-rules",
+  "best-with-tea",
+  "still-wip",
+  "touch-grass-later",
+];
+import { Image } from "astro:assets";
+import furry from "../assets/asswolf_txt.gif";
+import nyan from "../assets/nyan.png";
+import flags from "../assets/flags.png";
+---
+
+<div class="side">
+  <div class="side-title">Stamps & Stuff</div>
+
+  <div class="statusbox">
+    <div class="statusrow">
+      <span class="led on" aria-hidden="true"></span>
+      <span><strong>Status:</strong> Online</span>
+    </div>
+    <div class="statusrow">
+      <span class="led" aria-hidden="true"></span>
+      <span><strong>Now playing:</strong> (soon)</span>
+    </div>
+  </div>
+
+  <div class="stampgrid" aria-label="stamps">
+    {stamps.map((s) => (
+      <div class="stamp">{s}</div>
+    ))}
+  </div>
+
+  <div class="buttonwall" aria-label="buttons">
+    <Image src={nyan} alt="trans nyan" width={88} height={31} /> 
+    <Image src={furry} alt="asswolf gif" width={88} height={31} />    <div class="btn88">static site</div>
+    <div class="btn88">purple</div>
+    <Image src={flags} alt="rainbow Pan" width={88} height={31} />
+    <div class="btn88">link me</div>
+  </div>
+
+  <div class="side-box">
+    <div class="side-box-title">Webring</div>
+    <div class="side-box-body">
+      <div class="webringline">
+        <a href="#">← prev</a>
+        <span class="sep">•</span>
+        <a href="#">random</a>
+        <span class="sep">•</span>
+        <a href="#">next →</a>
+      </div>
+    </div>
+  </div>
+</div>

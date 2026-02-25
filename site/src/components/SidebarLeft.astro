@@ -1,0 +1,45 @@
+---
+const path = Astro.url.pathname;
+const nav = [
+  { href: "/", label: "Home" },
+  { href: "/about", label: "About" },
+  { href: "/music", label: "Music" },
+];
+
+const active = (href) => (href === "/" ? path === "/" : path.startsWith(href));
+---
+<div class="side">
+  <div class="side-title">Directory</div>
+
+  <nav aria-label="Site directory">
+    <ul class="dir">
+      {nav.map((l) => (
+        <li>
+          <a class={`dir-link ${active(l.href) ? "on" : ""}`} href={l.href}>
+            <span class="dir-arrow" aria-hidden="true">➜</span> {l.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+
+  <div class="side-box">
+    <div class="side-box-title">Now</div>
+    <div class="side-box-body">
+      <div class="mono">building:</div>
+      <div>indie-ish personal pages</div>
+      <div class="mono" style="margin-top:8px;">mood:</div>
+      <div>✨ obsessed with purple</div>
+    </div>
+  </div>
+
+  <div class="side-box">
+    <div class="side-box-title">Sitemap</div>
+    <div class="side-box-body">
+      <ul class="tinylist">
+        <li>/about → bio</li>
+        <li>/music → favorites</li>
+      </ul>
+    </div>
+  </div>
+</div>

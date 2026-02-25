@@ -1,0 +1,436 @@
+---
+/**
+ * Minimal “nano player” controlling YouTube audio via IFrame API.
+ * - Hidden player mount (NOT display:none)
+ * - Custom UI (album art + click wheel)
+ *
+ * Usage:
+ * <YtNanoPlayer />
+ *
+ * Customize playlist below.
+ */
+
+const playlist = [
+  {
+    id: "OdfIva9o2HM",
+    title: "Kill Somebody",
+    artist: "Tanger",
+    // Optional: provide your own album art URL to avoid “video thumbnail” look:
+    // art: "/img/art/example.png",
+  },
+  {
+    id: "G8SN740CU74",
+    title: "LICHTER AUS",
+    artist: "makko und Miksu / Macloud",
+  },
+];
+---
+
+<div class="nano" data-nano>
+  <div class="nano-body">
+    <div class="nano-screen">
+      <div class="nano-screen-top">
+        <div class="nano-now">NOW PLAYING</div>
+        <div class="nano-vol">
+          <span class="nano-vol-label">VOL</span>
+<div class="nano-vol-bar" data-vol-bar role="slider" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="70">
+  <div class="nano-vol-fill" data-vol-fill></div>
+</div>
+        </div>
+      </div>
+
+      <div class="nano-art" data-art aria-hidden="true"></div>
+
+      <div class="nano-meta">
+        <div class="nano-title" data-title>Loading…</div>
+        <div class="nano-artist" data-artist></div>
+      </div>
+
+      <div class="nano-hint">
+        MENU = list
+      </div>
+    </div>
+
+    <!-- hidden YouTube mount: keep in DOM, but invisible -->
+    <div class="yt-hidden" aria-hidden="true">
+      <div class="yt-mount" data-yt-mount></div>
+    </div>
+
+    <div class="nano-wheel" data-wheel>
+      <button class="nano-btn nano-menu" type="button" data-act="menu">MENU</button>
+
+      <button class="nano-btn nano-prev" type="button" aria-label="Previous" data-act="prev">⏮</button>
+      <button class="nano-btn nano-next" type="button" aria-label="Next" data-act="next">⏭</button>
+
+      <button class="nano-btn nano-play" type="button" aria-label="Play/Pause" data-act="playpause">⏯</button>
+      <button class="nano-btn nano-stop" type="button" aria-label="Stop" data-act="stop">●</button>
+
+      <button class="nano-center" type="button" aria-label="Select" data-act="select"></button>
+    </div>
+
+    <div class="nano-list" data-list hidden>
+      <div class="nano-list-head">TRACK LIST</div>
+      <ol class="nano-list-items" data-list-items></ol>
+    </div>
+  </div>
+</div>
+
+<script define:vars={{ playlist }}>
+  const PLAYLIST = playlist;
+
+  function loadYTApiOnce() {
+    if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+    return new Promise((resolve, reject) => {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { prev && prev(); resolve(window.YT); };
+
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const s = document.createElement("script");
+        s.src = "https://www.youtube.com/iframe_api";
+        s.onerror = () => reject(new Error("Failed to load YouTube iframe_api (blocked?)"));
+        document.head.appendChild(s);
+      }
+
+      // safety timeout so you don't hang forever
+      setTimeout(() => {
+        if (!(window.YT && window.YT.Player)) reject(new Error("YouTube API timeout (blocked?)"));
+      }, 6000);
+    });
+  }
+
+  (async () => {
+    const root = document.querySelector("[data-nano]");
+    if (!root || !PLAYLIST?.length) return;
+
+    const artEl = root.querySelector("[data-art]");
+    const titleEl = root.querySelector("[data-title]");
+    const artistEl = root.querySelector("[data-artist]");
+    const volFill = root.querySelector("[data-vol-fill]");
+    const listEl = root.querySelector("[data-list]");
+    const listItemsEl = root.querySelector("[data-list-items]");
+    const mount = root.querySelector("[data-yt-mount]");
+    const wheel = root.querySelector("[data-wheel]");
+
+    let idx = 0;
+    let isPlaying = false;
+    let volume = 70;
+    let player = null;
+
+    // build list
+    listItemsEl.innerHTML = "";
+    PLAYLIST.forEach((t, i) => {
+      const li = document.createElement("li");
+      li.className = "nano-li";
+      li.innerHTML = `<button type="button" class="nano-li-btn" data-pick="${i}">
+        <span class="nano-li-title">${t.title ?? "Untitled"}</span>
+        <span class="nano-li-artist">${t.artist ?? ""}</span>
+      </button>`;
+      listItemsEl.appendChild(li);
+    });
+
+    listItemsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-pick]");
+      if (!btn) return;
+      loadTrack(parseInt(btn.dataset.pick, 10), true);
+      listEl.hidden = true;
+    });
+
+    const bestThumb = (id) => [
+      `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`,
+      `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      `https://i.ytimg.com/vi/${id}/mqdefault.jpg`,
+    ];
+
+    async function setArt(track) {
+      if (track.art) {
+        artEl.style.backgroundImage = `url("${track.art}")`;
+        return;
+      }
+      for (const url of bestThumb(track.id)) {
+        try {
+          await new Promise((res, rej) => {
+            const img = new Image();
+            img.onload = () => res();
+            img.onerror = () => rej();
+            img.src = url;
+          });
+          artEl.style.backgroundImage = `url("${url}")`;
+          return;
+        } catch {}
+      }
+      artEl.style.backgroundImage = "none";
+    }
+
+    function setVol(v) {
+      volume = Math.max(0, Math.min(100, v));
+      volFill.style.width = volume + "%";
+      if (player?.setVolume) player.setVolume(volume);
+    }
+
+    function render(track) {
+      titleEl.textContent = track.title ?? "YouTube Track";
+      artistEl.textContent = track.artist ?? "";
+      setVol(volume);
+      setArt(track);
+
+      root.querySelectorAll(".nano-li-btn").forEach((b) => b.classList.remove("on"));
+      root.querySelector(`.nano-li-btn[data-pick="${idx}"]`)?.classList.add("on");
+    }
+    const volBar = root.querySelector("[data-vol-bar]");
+
+function setVolFromPointer(clientX) {
+  const r = volBar.getBoundingClientRect();
+  const pct = (clientX - r.left) / r.width;
+  setVol(Math.round(pct * 100));
+  volBar.setAttribute("aria-valuenow", String(volume));
+}
+
+if (volBar) {
+  volBar.style.cursor = "ew-resize";
+
+  let dragging = false;
+
+  volBar.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    volBar.setPointerCapture(e.pointerId);
+    setVolFromPointer(e.clientX);
+  });
+
+  volBar.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    setVolFromPointer(e.clientX);
+  });
+
+  volBar.addEventListener("pointerup", () => {
+    dragging = false;
+  });
+
+  volBar.addEventListener("pointercancel", () => {
+    dragging = false;
+  });
+}
+    try {
+      await loadYTApiOnce();
+    } catch (err) {
+      titleEl.textContent = "YouTube blocked (adblock?)";
+      artistEl.textContent = String(err.message || err);
+      return;
+    }
+
+    // mount player
+    const mountId = "ytp-" + Math.random().toString(36).slice(2);
+    mount.id = mountId;
+
+    player = new YT.Player(mountId, {
+      width: "320",
+      height: "180",
+      videoId: PLAYLIST[0].id,
+      playerVars: {
+        controls: 0,
+        modestbranding: 1,
+        rel: 0,
+        playsinline: 1,
+        origin: window.location.origin,
+      },
+      events: {
+        onReady: () => {
+          setVol(volume);
+          render(PLAYLIST[idx]);
+        },
+        onStateChange: (ev) => {
+          if (ev.data === 1) isPlaying = true;
+          if (ev.data === 2) isPlaying = false;
+          if (ev.data === 0) next(true);
+        }
+      }
+    });
+
+    function play(){ player.playVideo(); isPlaying = true; }
+    function pause(){ player.pauseVideo(); isPlaying = false; }
+    function stop(){ player.stopVideo(); isPlaying = false; }
+
+    function loadTrack(i, autoplay=false) {
+      idx = (i + PLAYLIST.length) % PLAYLIST.length;
+      const t = PLAYLIST[idx];
+      render(t);
+      player.loadVideoById(t.id);
+      if (!autoplay) stop();
+    }
+    function prev(autoplay=false){ loadTrack(idx - 1, autoplay); }
+    function next(autoplay=false){ loadTrack(idx + 1, autoplay); }
+
+    root.querySelector('[data-act="playpause"]').addEventListener("click", () => isPlaying ? pause() : play());
+    root.querySelector('[data-act="stop"]').addEventListener("click", stop);
+    root.querySelector('[data-act="prev"]').addEventListener("click", () => prev(isPlaying));
+    root.querySelector('[data-act="next"]').addEventListener("click", () => next(isPlaying));
+    root.querySelector('[data-act="menu"]').addEventListener("click", () => { listEl.hidden = !listEl.hidden; });
+    root.querySelector('[data-act="select"]').addEventListener("click", () => isPlaying ? pause() : play());
+
+    wheel.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      setVol(volume - Math.sign(e.deltaY) * 3);
+    }, { passive: false });
+
+    render(PLAYLIST[0]);
+  })();
+</script>
+
+<style>
+  /* “nano” styling — unique, not an Apple replica */
+  .nano { display: inline-block; }
+  .nano-body{
+    width: 280px;
+    padding: 14px 14px 16px;
+    border-radius: 18px;
+    border: 2px solid rgba(229,222,254,.28);
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.22));
+    box-shadow: 0 18px 45px rgba(0,0,0,.55);
+  }
+
+  .nano-screen{
+    border-radius: 12px;
+    border: 2px solid rgba(229,222,254,.22);
+    background: rgba(0,0,0,.35);
+    padding: 10px;
+  }
+
+  .nano-screen-top{
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-family: "Courier New", monospace;
+    font-size: 11px;
+    color: rgba(255,255,255,.78);
+    letter-spacing: .5px;
+  }
+
+  .nano-vol{ display:flex; align-items:center; gap: 6px; }
+  .nano-vol-bar{
+    width: 78px; height: 8px;
+    border: 1px solid rgba(229,222,254,.22);
+    background: rgba(255,255,255,.06);
+    border-radius: 999px;
+    overflow:hidden;
+  }
+  .nano-vol-fill{
+    height:100%;
+    width:70%;
+    background: linear-gradient(90deg, rgba(229,222,254,.85), rgba(143,128,204,.85));
+  }
+
+  .nano-art{
+    height: 132px;
+    border-radius: 10px;
+    border: 1px solid rgba(229,222,254,.18);
+    background-size: cover;
+    background-position: center;
+    background-color: rgba(0,0,0,.25);
+    margin-bottom: 10px;
+  }
+
+  .nano-meta{ margin-bottom: 6px; }
+  .nano-title{
+    font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+    font-weight: 900;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+  .nano-artist{
+    font-size: 12px;
+    color: rgba(255,255,255,.70);
+    margin-top: 2px;
+  }
+  .nano-hint{
+    font-size: 11px;
+    color: rgba(255,255,255,.55);
+    margin-top: 8px;
+  }
+
+  /* Hidden player: keep it present, just invisible and offscreen */
+  .yt-hidden{
+  position: fixed;
+  left: -10000px;
+  top: -10000px;
+  width: 320px;
+  height: 180px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+  .nano-wheel{
+    position: relative;
+    margin: 14px auto 0;
+    width: 220px;
+    height: 220px;
+    border-radius: 999px;
+    border: 2px solid rgba(229,222,254,.22);
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.12), rgba(0,0,0,.18));
+    box-shadow: inset 0 0 0 6px rgba(0,0,0,.16);
+    user-select: none;
+  }
+
+  .nano-center{
+    position:absolute;
+    inset: 66px;
+    border-radius: 999px;
+    border: 2px solid rgba(229,222,254,.18);
+    background: radial-gradient(circle at 35% 35%, rgba(255,255,255,.10), rgba(0,0,0,.12));
+    cursor:pointer;
+  }
+
+  .nano-btn{
+    position:absolute;
+    border: none;
+    background: transparent;
+    color: rgba(255,255,255,.80);
+    font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+    font-weight: 900;
+    cursor:pointer;
+    text-shadow: 0 1px 0 rgba(0,0,0,.45);
+  }
+  .nano-btn:hover{ color: rgba(255,255,255,.95); }
+
+  .nano-menu{ top: 18px; left: 0; right:0; margin:auto; width: 80px; font-size: 12px; letter-spacing:.6px; }
+  .nano-prev{ left: 18px; top: 0; bottom:0; margin:auto; height: 34px; font-size: 18px; }
+  .nano-next{ right: 18px; top: 0; bottom:0; margin:auto; height: 34px; font-size: 18px; }
+  .nano-play{ bottom: 18px; left: 0; right:0; margin:auto; width: 60px; font-size: 18px; }
+  .nano-stop{ bottom: 22px; right: 22px; font-size: 14px; opacity:.9; }
+
+  /* Track list overlay */
+  .nano-list{
+    margin-top: 10px;
+    border: 2px solid rgba(229,222,254,.18);
+    background: rgba(0,0,0,.30);
+    border-radius: 12px;
+    overflow:hidden;
+  }
+  .nano-list-head{
+    padding: 8px 10px;
+    font-family: "Courier New", monospace;
+    letter-spacing: .6px;
+    font-size: 11px;
+    color: rgba(255,255,255,.78);
+    background: linear-gradient(90deg, rgba(143,128,204,.20), transparent);
+    border-bottom: 1px dashed rgba(229,222,254,.18);
+  }
+  .nano-list-items{ margin:0; padding: 8px 10px 12px 22px; }
+  .nano-li{ margin: 6px 0; }
+  .nano-li-btn{
+    width: 100%;
+    text-align:left;
+    border: 1px solid rgba(229,222,254,.14);
+    background: rgba(255,255,255,.04);
+    color: rgba(255,255,255,.88);
+    padding: 6px 8px;
+    border-radius: 8px;
+    cursor:pointer;
+  }
+  .nano-li-btn.on{
+    border-color: rgba(229,222,254,.35);
+    box-shadow: 0 0 0 2px rgba(143,128,204,.20) inset;
+  }
+  .nano-li-title{ display:block; font-weight: 900; font-size: 12px; }
+  .nano-li-artist{ display:block; font-size: 11px; opacity:.75; margin-top: 2px; }
+</style>
