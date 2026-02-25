@@ -37,66 +37,132 @@ import flags from "../assets/flags.png";
       <span><strong>Status:</strong><span id="status-text">Online</span></span>
     </div>
   </div>
-  <script is:inline>
-  const API = "https://nowplaying-worker.adoptedbyegirl.workers.dev/now"; // your worker
+<script is:inline>
+  const API = "https://nowplaying-worker.adoptedbyegirl.workers.dev/now";
 
-  const title = document.getElementById("np-title");
-  const artist = document.getElementById("np-artist");
-  const art = document.getElementById("np-art");
+  const widget = document.querySelector("[data-stamps-widget]");
+  const statusRow = widget?.querySelector("[data-status-row]");
+  const statusLed = widget?.querySelector("[data-status-led]");
+  const statusText = widget?.querySelector("[data-status-text]");
 
-  const statusText = document.getElementById("status-text"); // add these ids in your markup
-  const statusLed = document.getElementById("status-led");
+  const title = widget?.querySelector("#np-title");
+  const artist = widget?.querySelector("#np-artist");
+  const art = widget?.querySelector("#np-art");
 
-  const OFFLINE_AFTER_MS = 2 * 60 * 1000; // 2 minutes (tune this)
+  const OFFLINE_AFTER_MS = 2 * 60 * 1000;
+
+  // polling strategy
+  const FAST_MS = 15000;     // while playing
+  const SLOW_MS = 120000;    // while offline / paused
+  const ERROR_MS = 180000;   // after network errors
+  let nextDelay = SLOW_MS;
+
+  // ETag caching
+  let lastEtag = null;
 
   function setOffline() {
-    if (statusText) statusText.textContent = "Offline";
-    if (statusLed) statusLed.classList.remove("on");
-    title.textContent = "—";
-    artist.textContent = "offline";
-    art.removeAttribute("src");
+    statusText && (statusText.textContent = "Offline");
+    statusLed && statusLed.classList.remove("on");
+    statusRow && statusRow.classList.add("offline");
+
+    title && (title.textContent = "—");
+    artist && (artist.textContent = "offline");
+    art && art.removeAttribute("src");
   }
 
   function setOnline() {
-    if (statusText) statusText.textContent = "Online";
-    if (statusLed) statusLed.classList.add("on");
+    statusText && (statusText.textContent = "Online");
+    statusLed && statusLed.classList.add("on");
+    statusRow && statusRow.classList.remove("offline");
   }
 
   async function tick() {
+    // Don’t spam when tab is hidden
+    if (document.visibilityState !== "visible") {
+      nextDelay = SLOW_MS;
+      schedule();
+      return;
+    }
+
     try {
-      const res = await fetch(API, { cache: "no-store" });
+      const headers = {};
+      if (lastEtag) headers["If-None-Match"] = lastEtag;
+
+      const res = await fetch(API, { cache: "no-store", headers });
+
+      // 304 = unchanged, keep previous UI and slow/fast schedule stays
+      if (res.status === 304) {
+        schedule();
+        return;
+      }
 
       if (res.status === 204) {
         setOffline();
+        nextDelay = SLOW_MS;
+        schedule();
         return;
       }
+
+      // update etag
+      const etag = res.headers.get("ETag");
+      if (etag) lastEtag = etag;
 
       const data = await res.json();
 
-      // Staleness check
       const updatedAt = data.updatedAt ? Date.parse(data.updatedAt) : 0;
       const age = Date.now() - updatedAt;
+
+      // treat stale as offline
       if (!updatedAt || age > OFFLINE_AFTER_MS) {
         setOffline();
+        nextDelay = SLOW_MS;
+        schedule();
         return;
       }
 
-      // Optional: treat paused as offline
-      // trackState: 1 = playing, 2 = paused (YTMD) ([your payload)
-      // If you want paused to be offline, uncomment:
-      if (data.trackState !== 1) { setOffline(); return; }
+      // If you want offline unless actively playing:
+      const playing = data.trackState === 1;
 
+      if (!playing) {
+        // paused = offline (your choice)
+        setOffline();
+        nextDelay = SLOW_MS;
+        schedule();
+        return;
+      }
+
+      // playing → online + faster updates
       setOnline();
-      title.textContent = data.title || "—";
-      artist.textContent = data.artist || "";
-      if (data.thumbnail) art.src = data.thumbnail;
+      title && (title.textContent = data.title || "—");
+      artist && (artist.textContent = data.artist || "");
+      if (art && data.thumbnail) art.src = data.thumbnail;
+
+      nextDelay = FAST_MS;
+      schedule();
     } catch {
+      // network/worker issues: back off hard
       setOffline();
+      nextDelay = ERROR_MS;
+      schedule();
     }
   }
 
+  let timer = null;
+  function schedule() {
+    clearTimeout(timer);
+    timer = setTimeout(tick, nextDelay);
+  }
+
+  // when tab becomes visible, refresh quickly once
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      nextDelay = 0;
+      schedule();
+    }
+  });
+
+  // initial run
   tick();
-  setInterval(tick, 15000);
 </script>
 </div>
 

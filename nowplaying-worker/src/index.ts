@@ -39,24 +39,43 @@ export interface Env {
 	  }
   
 	  // Public: GET /now
-	  if (req.method === "GET" && url.pathname === "/now") {
-		const data = await env.NOWPLAYING.get(KEY, { type: "json" });
-		if (!data) {
-		  return new Response(null, {
-			status: 204,
-			headers: { ...corsHeaders(req, env), "Cache-Control": "no-store" },
-		  });
-		}
+	  // Public: GET /now
+if (req.method === "GET" && url.pathname === "/now") {
+	const raw = await env.NOWPLAYING.get(KEY); // string
+	if (!raw) {
+	  return new Response(null, {
+		status: 204,
+		headers: { ...corsHeaders(req, env), "Cache-Control": "no-store" },
+	  });
+	}
   
-		return new Response(JSON.stringify(data), {
-		  status: 200,
-		  headers: {
-			...corsHeaders(req, env),
-			"content-type": "application/json; charset=utf-8",
-			"Cache-Control": "no-store",
-		  },
-		});
-	  }
+	// simple ETag (stable if content unchanged)
+	const etag = `"${raw.length}-${raw.charCodeAt(0) || 0}-${raw.charCodeAt(raw.length - 1) || 0}"`;
+	const inm = req.headers.get("If-None-Match");
+	if (inm && inm === etag) {
+	  return new Response(null, {
+		status: 304,
+		headers: {
+		  ...corsHeaders(req, env),
+		  "ETag": etag,
+		  "Cache-Control": "public, max-age=10",
+		},
+	  });
+	}
+  
+	return new Response(raw, {
+	  status: 200,
+	  headers: {
+		...corsHeaders(req, env),
+		"content-type": "application/json; charset=utf-8",
+		"ETag": etag,
+		// short cache is fine; you’re polling anyway
+		"Cache-Control": "public, max-age=10",
+	  },
+
+	});
+  }
+  
   
 	  // Private: POST /now (bridge pushes updates)
 	  if (req.method === "POST" && url.pathname === "/now") {
