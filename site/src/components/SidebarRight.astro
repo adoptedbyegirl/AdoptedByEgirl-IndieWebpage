@@ -18,15 +18,54 @@ import flags from "../assets/flags.png";
 
 <div class="side">
   <div class="side-title">Stamps & Stuff</div>
+   <div class="side-box" id="np">
+  <div class="side-box-title">Now playing</div>
+  <div class="side-box-body">
+    <div style="display:flex; gap:10px; align-items:center;">
+      <img id="np-art" alt="" width="56" height="56"
+           style="border:1px solid rgba(255,255,255,.18); background: rgba(0,0,0,.2); object-fit:cover;" />
+      <div>
+        <div id="np-title" style="font-weight:800;">—</div>
+        <div id="np-artist" class="mono" style="opacity:.8;">offline</div>
+      </div>
+    </div>
+  </div>
+</div>
 
+<script is:inline>
+  const API = "https://nowplaying-worker.AdoptedByEgirl.workers.dev/now"; // <-- change
+
+  const title = document.getElementById("np-title");
+  const artist = document.getElementById("np-artist");
+  const art = document.getElementById("np-art");
+
+  async function tick() {
+    try {
+      const res = await fetch(API, { cache: "no-store" });
+      if (res.status === 204) {
+        title.textContent = "—";
+        artist.textContent = "offline";
+        art.removeAttribute("src");
+        return;
+      }
+      const data = await res.json();
+      title.textContent = data.title || "—";
+      artist.textContent = data.artist || (data.trackState === 1 ? "playing" : "paused");
+      if (data.thumbnail) art.src = data.thumbnail;
+    } catch {
+      title.textContent = "—";
+      artist.textContent = "offline";
+      art.removeAttribute("src");
+    }
+  }
+
+  tick();
+  setInterval(tick, 15000);
+</script> 
   <div class="statusbox">
     <div class="statusrow">
       <span class="led on" aria-hidden="true"></span>
       <span><strong>Status:</strong> Online</span>
-    </div>
-    <div class="statusrow">
-      <span class="led" aria-hidden="true"></span>
-      <span><strong>Now playing:</strong> (soon)</span>
     </div>
   </div>
 
@@ -35,6 +74,7 @@ import flags from "../assets/flags.png";
       <div class="stamp">{s}</div>
     ))}
   </div>
+  
 
   <div class="buttonwall" aria-label="buttons">
     <Image src={nyan} alt="trans nyan" width={88} height={31} /> 
