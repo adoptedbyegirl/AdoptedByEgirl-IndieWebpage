@@ -87,7 +87,10 @@ import trans from "../assets/transrights.png"
       // Optional: treat paused as offline
       // trackState: 1 = playing, 2 = paused (YTMD) ([your payload)
       // If you want paused to be offline, uncomment:
-      if (data.trackState !== 1) { setOffline(); return; }
+      if (data.trackState !== 1 && data.trackState !== -1) {
+  setOffline();
+  return;
+}
 
       setOnline();
       title.textContent = data.title || "—";
