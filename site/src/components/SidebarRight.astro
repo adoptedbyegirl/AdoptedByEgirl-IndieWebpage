@@ -14,7 +14,7 @@ import { Image } from "astro:assets";
 import furry from "../assets/asswolf_txt.gif";
 import nyan from "../assets/nyan.png";
 import flags from "../assets/flags.png";
-import trans from "../assets/transrights.png";
+import trans from "../assets/transrights.png"
 ---
 
 <div class="side">
@@ -38,136 +38,69 @@ import trans from "../assets/transrights.png";
       <span><strong>Status:</strong><span id="status-text">Online</span></span>
     </div>
   </div>
+</div>
+
 <script is:inline>
-  const API = "https://nowplaying-worker.adoptedbyegirl.workers.dev/now";
+  const API = "https://nowplaying-worker.adoptedbyegirl.workers.dev/now"; // your worker
 
-  const widget = document.querySelector("[data-stamps-widget]");
-  const statusRow = widget?.querySelector("[data-status-row]");
-  const statusLed = widget?.querySelector("[data-status-led]");
-  const statusText = widget?.querySelector("[data-status-text]");
+  const title = document.getElementById("np-title");
+  const artist = document.getElementById("np-artist");
+  const art = document.getElementById("np-art");
 
-  const title = widget?.querySelector("#np-title");
-  const artist = widget?.querySelector("#np-artist");
-  const art = widget?.querySelector("#np-art");
+  const statusText = document.getElementById("status-text"); // add these ids in your markup
+  const statusLed = document.getElementById("status-led");
 
-  const OFFLINE_AFTER_MS = 2 * 60 * 1000;
-
-  // polling strategy
-  const FAST_MS = 15000;     // while playing
-  const SLOW_MS = 120000;    // while offline / paused
-  const ERROR_MS = 180000;   // after network errors
-  let nextDelay = SLOW_MS;
-
-  // ETag caching
-  let lastEtag = null;
+  const OFFLINE_AFTER_MS = 2 * 60 * 1000; // 2 minutes (tune this)
 
   function setOffline() {
-    statusText && (statusText.textContent = "Offline");
-    statusLed && statusLed.classList.remove("on");
-    statusRow && statusRow.classList.add("offline");
-
-    title && (title.textContent = "—");
-    artist && (artist.textContent = "offline");
-    art && art.removeAttribute("src");
+    if (statusText) statusText.textContent = "Offline";
+    if (statusLed) statusLed.classList.remove("on");
+    title.textContent = "—";
+    artist.textContent = "offline";
+    art.removeAttribute("src");
   }
 
   function setOnline() {
-    statusText && (statusText.textContent = "Online");
-    statusLed && statusLed.classList.add("on");
-    statusRow && statusRow.classList.remove("offline");
+    if (statusText) statusText.textContent = "Online";
+    if (statusLed) statusLed.classList.add("on");
   }
 
   async function tick() {
-    // Don’t spam when tab is hidden
-    if (document.visibilityState !== "visible") {
-      nextDelay = SLOW_MS;
-      schedule();
-      return;
-    }
-
     try {
-      const headers = {};
-      if (lastEtag) headers["If-None-Match"] = lastEtag;
-
-      const res = await fetch(API, { cache: "no-store", headers });
-
-      // 304 = unchanged, keep previous UI and slow/fast schedule stays
-      if (res.status === 304) {
-        schedule();
-        return;
-      }
+      const res = await fetch(API, { cache: "no-store" });
 
       if (res.status === 204) {
         setOffline();
-        nextDelay = SLOW_MS;
-        schedule();
         return;
       }
-
-      // update etag
-      const etag = res.headers.get("ETag");
-      if (etag) lastEtag = etag;
 
       const data = await res.json();
 
+      // Staleness check
       const updatedAt = data.updatedAt ? Date.parse(data.updatedAt) : 0;
       const age = Date.now() - updatedAt;
-
-      // treat stale as offline
       if (!updatedAt || age > OFFLINE_AFTER_MS) {
         setOffline();
-        nextDelay = SLOW_MS;
-        schedule();
         return;
       }
 
-      // If you want offline unless actively playing:
-      const playing = data.trackState === 1;
+      // Optional: treat paused as offline
+      // trackState: 1 = playing, 2 = paused (YTMD) ([your payload)
+      // If you want paused to be offline, uncomment:
+      if (data.trackState !== 1) { setOffline(); return; }
 
-      if (!playing) {
-        // paused = offline (your choice)
-        setOffline();
-        nextDelay = SLOW_MS;
-        schedule();
-        return;
-      }
-
-      // playing → online + faster updates
       setOnline();
-      title && (title.textContent = data.title || "—");
-      artist && (artist.textContent = data.artist || "");
-      if (art && data.thumbnail) art.src = data.thumbnail;
-
-      nextDelay = FAST_MS;
-      schedule();
+      title.textContent = data.title || "—";
+      artist.textContent = data.artist || "";
+      if (data.thumbnail) art.src = data.thumbnail;
     } catch {
-      // network/worker issues: back off hard
       setOffline();
-      nextDelay = ERROR_MS;
-      schedule();
     }
   }
 
-  let timer = null;
-  function schedule() {
-    clearTimeout(timer);
-    timer = setTimeout(tick, nextDelay);
-  }
-
-  // when tab becomes visible, refresh quickly once
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      nextDelay = 0;
-      schedule();
-    }
-  });
-
-  // initial run
   tick();
+  setInterval(tick, 15000);
 </script>
-</div>
-
-
 
 
   <div class="stampgrid" aria-label="stamps">
@@ -180,7 +113,7 @@ import trans from "../assets/transrights.png";
   <div class="buttonwall" aria-label="buttons">
     <Image src={nyan} alt="trans nyan" width={88} height={31} /> 
     <Image src={furry} alt="asswolf gif" width={88} height={31} />    <div class="btn88">static site</div>
-    <Image src={trans} alt="Trans rights now!" width={88} height={31} /> 
+    <Image src={trans} alt="trans rights now" width={88} height={31} />
     <Image src={flags} alt="rainbow Pan" width={88} height={31} />
     <div class="btn88">link me</div>
   </div>
