@@ -334,3 +334,57 @@ body{
   border: 2px solid rgba(229,222,254,.18);
   background: rgba(0,0,0,.18);
 }
+/* Give the whole module spacing so the next module doesn't sit too close */
+.mybutton-box{
+  margin-bottom: 12px; /* <- this is the "padding downwards" you want */
+}
+
+/* Center the button and keep it from collapsing */
+.mybutton-body{
+  display:flex;
+  justify-content:center;
+  padding: 12px 10px 16px; /* extra bottom padding so nothing touches */
+}
+
+/* The "slot" look: no outer border, just inset lines like your webring box */
+.badge-slot{
+  appearance:none;
+  border:0;
+  padding: 10px 12px;
+  background:
+    radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.22));
+  background-size: 7px 7px, auto;
+
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.10),
+    inset 0 0 0 3px rgba(0,0,0,.55),
+    inset 0 0 18px rgba(0,0,0,.55);
+
+  cursor:pointer;
+  border-radius: 0;
+}
+
+.badge-slot-img{
+  display:block;
+  width:88px;
+  height:31px;
+  image-rendering: pixelated;
+}
+
+.badge-slot:hover{
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.14),
+    inset 0 0 0 3px rgba(0,0,0,.55),
+    inset 0 0 18px rgba(0,0,0,.55),
+    0 0 10px rgba(143,128,204,.12);
+}
+
+.badge-slot.copied{
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.18),
+    inset 0 0 0 3px rgba(0,0,0,.55),
+    inset 0 0 18px rgba(0,0,0,.55),
+    0 0 14px rgba(143,128,204,.22);
+}
+.side-box{ margin-bottom: 12px; }

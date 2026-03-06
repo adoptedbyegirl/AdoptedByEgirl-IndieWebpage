@@ -15,6 +15,19 @@ import furry from "../assets/asswolf_txt.gif";
 import nyan from "../assets/nyan.png";
 import flags from "../assets/flags.png";
 import trans from "../assets/transrights.png"
+
+
+import buttonGif from "../assets/adoptedbyegirl-88x31.gif?url";
+
+const hrefPath = "/";
+const altText = "AdoptedByEgirl";
+
+const siteOrigin = Astro.site ? Astro.site.toString().replace(/\/$/, "") : null;
+const embedCodeServer = siteOrigin
+  ? `<a href="${siteOrigin}${hrefPath}" target="_blank" rel="noreferrer">` +
+    `<img src="${new URL(buttonGif, siteOrigin).toString()}" width="88" height="31" alt="${altText}" />` +
+    `</a>`
+  : null;
 ---
 
 <div class="side">
@@ -112,6 +125,55 @@ import trans from "../assets/transrights.png"
     ))}
   </div>
   
+<div class="side-box" data-linkback>
+  <div class="side-box-title">my button</div>
+  <div class="side-box-body mybutton-body">
+<button class="badge-slot" type="button" data-copy-embed aria-label="Copy my button embed code">
+  <img class="badge-slot-img" src={buttonGif} width="88" height="31" alt={altText} />
+</button>
+
+    <script define:vars={{ embedCodeServer, buttonGif, hrefPath, altText }}>
+      const box = document.querySelector("[data-linkback]");
+      const btn = box?.querySelector("[data-copy-embed]");
+
+      const origin = window.location.origin.replace(/\/$/, "");
+      const imgAbs = new URL(buttonGif, origin).toString();
+      const hrefAbs = origin + hrefPath;
+
+      const embedCode =
+        embedCodeServer ??
+        (`<a href="${hrefAbs}" target="_blank" rel="noreferrer">` +
+         `<img src="${imgAbs}" width="88" height="31" alt="${altText}" />` +
+         `</a>`);
+
+      async function copyText(text) {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+
+      btn?.addEventListener("click", async () => {
+        try {
+          await copyText(embedCode);
+          btn.classList.add("copied");
+          setTimeout(() => btn.classList.remove("copied"), 450);
+        } catch {
+          // intentionally silent
+        }
+      });
+    </script>
+  </div>
+</div>
 
   <div class="buttonwall" aria-label="buttons">
     <Image src={nyan} alt="trans nyan" width={88} height={31} /> 
